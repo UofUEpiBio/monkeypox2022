@@ -1,0 +1,72 @@
+---
+title: "Monkeypox"
+output: github_document
+---
+
+This report is automatically compiled using data from [Global.health](https://global.health).
+The original data is retrieved from [this repository](https://github.com/globaldothealth/monkeypox).
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+```{r}
+library(data.table)
+library(ggplot2)
+
+dat <- fread("https://raw.githubusercontent.com/globaldothealth/monkeypox/main/latest.csv")
+meta <- fread("https://raw.githubusercontent.com/globaldothealth/monkeypox/main/latest.csv")
+```
+
+## Cases per country
+
+```{r per-country}
+dat_per_country <- dat[, .(n = .N), by = .(Country)]
+setorder(dat_per_country, n)
+dat_per_country[, Country := factor(Country, levels = Country)]
+ggplot(dat_per_country, aes(x = Country, y = n)) +
+  geom_col() +
+  coord_flip() +
+  theme(axis.text.x = element_text(angle = 45)) +
+  labs(
+    y        = "Count",
+    title    = "Monkeypox Confirmed Cases",
+    subtitle = paste0("Last update ", max(dat$Date_last_modified, na.rm = TRUE)),
+    caption  = sprintf("Created by github.com/UofUEpi.\nData retrieved from github.com/globaldothealth/monkeypox.")
+    )
+```
+
+
+## Cases total
+
+```{r timeline}
+dat_per_date <- dat[, .(n = .N), by = .(Status, Date_entry)]
+dat_per_date <- dat_per_date[which(complete.cases(dat_per_date))]
+
+# Completing dates
+drange <- dat_per_date[, range(Date_entry, na.rm = TRUE)]
+merger <- data.table(Date_entry = seq(drange[1], drange[2], by = 1))
+merger <- rbindlist(
+  lapply(unique(dat_per_date$Status), \(x) {
+    cbind(merger, data.table(Status = x))
+  })
+)
+dat_per_date <- merge(
+  dat_per_date,
+  merger, all = TRUE
+  )
+
+dat_per_date[, Cumulative := cumsum(fcoalesce(n, 0L)), by = .(Status)]
+
+# dat_per_date[, Cumulative := nafill(Cumulative, type = "nocb")]
+
+ggplot(dat_per_date, aes(x = Date_entry, y = Cumulative)) +
+  geom_line(aes(colour = Status)) +
+  labs(
+    y        = "Count",
+    title    = "Monkeypox Cumulative Cases by Status",
+    subtitle = paste0("Last update ", max(dat$Date_last_modified, na.rm = TRUE)),
+    caption  = sprintf("Created by github.com/UofUEpi.\nData retrieved from github.com/globaldothealth/monkeypox.")
+    )
+```
+
