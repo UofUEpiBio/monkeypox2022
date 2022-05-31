@@ -1,7 +1,8 @@
 ---
-title: "Monkeypox"
 output: github_document
 ---
+
+# Monkeypox ![GitHub last commit](https://img.shields.io/github/last-commit/dslabscl/covid-data)
 
 This report is automatically compiled using data from [Global.health](https://global.health).
 The original data is retrieved from [this repository](https://github.com/globaldothealth/monkeypox).
@@ -69,4 +70,3 @@ ggplot(dat_per_date, aes(x = Date_entry, y = Cumulative)) +
     caption  = sprintf("Created by github.com/UofUEpi.\nData retrieved from github.com/globaldothealth/monkeypox.")
     )
 ```
-
