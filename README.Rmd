@@ -21,6 +21,36 @@ meta <- fread("https://raw.githubusercontent.com/globaldothealth/monkeypox/main/
 
 ## Cases per country
 
+```{r number-countries-affected}
+dat_country_count <- dat[, .(Country, Date_entry)] |> unique()
+dates <- dat[, range(Date_entry, na.rm = TRUE)]
+dates <- seq(from = dates[1], to = dates[2], by = 1)
+countries <- dat[, unique(Country)]
+dat_country_m <- matrix(
+  0L, nrow = length(dates), ncol = length(countries),
+  dimnames = list(as.character(dates), countries)
+  )
+
+dat_country_m[dat_country_count[, cbind(as.character(Date_entry), Country)]] <- 1L
+dat_country_m <- apply(dat_country_m, 2, cumsum, simplify = TRUE)
+dat_country_m[dat_country_m > 0] <- 1
+dat_country_m <- rowSums(dat_country_m)
+
+data.table(
+  Date = data.table::as.IDate(names(dat_country_m)),
+  Count = dat_country_m
+  ) |> ggplot(aes(x = Date, y = Count)) +
+  geom_line() +
+  labs(
+    y        = "Count",
+    title    = "Number of Countries reporting Monkeypox",
+    subtitle = paste0("Last update ", max(dat$Date_last_modified, na.rm = TRUE)),
+    caption  = sprintf("Created by github.com/UofUEpi.\nData retrieved from github.com/globaldothealth/monkeypox.")
+    )
+
+```
+
+
 ```{r per-country}
 dat_per_country <- dat[, .(n = .N), by = .(Country)]
 setorder(dat_per_country, n)
@@ -44,7 +74,7 @@ ggplot(dat_per_country, aes(x = Country, y = n)) +
 dat_per_date <- dat[, .(n = .N), by = .(Status, Date_entry)]
 dat_per_date <- dat_per_date[which(complete.cases(dat_per_date))]
 
-# Completing dates
+# Completes dates
 drange <- dat_per_date[, range(Date_entry, na.rm = TRUE)]
 merger <- data.table(Date_entry = seq(drange[1], drange[2], by = 1))
 merger <- rbindlist(
