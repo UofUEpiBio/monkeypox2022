@@ -14,3 +14,7 @@ from [this repository](https://github.com/globaldothealth/monkeypox).
 ## Cases total
 
 ![](README_files/figure-gfm/timeline-1.svg)<!-- -->
+
+![](README_files/figure-gfm/newcases-smoothed-1.svg)<!-- -->
+
+![](README_files/figure-gfm/newcases-per-country-smoothed-1.svg)<!-- -->

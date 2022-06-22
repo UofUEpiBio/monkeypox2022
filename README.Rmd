@@ -51,20 +51,21 @@ data.table(
 ```
 
 
-```{r per-country}
+```{r per-country, fig.height=10}
 dat_per_country <- dat[, .(n = .N), by = .(Country)]
 setorder(dat_per_country, n)
 dat_per_country[, Country := factor(Country, levels = Country)]
-ggplot(dat_per_country, aes(x = Country, y = n)) +
+ggplot(dat_per_country, aes(x = Country, y = n + .1)) +
   geom_col() +
   coord_flip() +
   theme(axis.text.x = element_text(angle = 45)) +
   labs(
-    y        = "Count",
+    y        = "Count (log-scale)",
     title    = "Monkeypox Confirmed Cases",
     subtitle = paste0("Last update ", max(dat$Date_last_modified, na.rm = TRUE)),
     caption  = sprintf("Created by github.com/UofUEpi.\nData retrieved from github.com/globaldothealth/monkeypox.")
-    )
+    ) +
+  scale_y_log10()
 ```
 
 
@@ -97,6 +98,70 @@ ggplot(dat_per_date, aes(x = Date_entry, y = Cumulative)) +
     y        = "Count",
     title    = "Monkeypox Cumulative Cases by Status",
     subtitle = paste0("Last update ", max(dat$Date_last_modified, na.rm = TRUE)),
-    caption  = sprintf("Created by github.com/UofUEpi.\nData retrieved from github.com/globaldothealth/monkeypox.")
+    caption  = sprintf("Created by github.com/UofUEpi.\nData retrieved from github.com/globaldothealth/monkeypox."),
+    x        = "Date"
     )
 ```
+
+```{r newcases-smoothed, message=FALSE}
+ggplot(dat_per_date[Status == "confirmed"], aes(x = Date_entry, y = fcoalesce(n, 0L))) +
+  geom_jitter(alpha = .5) + 
+  geom_smooth() +
+  labs(
+    y        = "Count",
+    title    = "Daily number of confirmed cases (worldwide)",
+    subtitle = paste0("Last update ", max(dat$Date_last_modified, na.rm = TRUE)),
+    caption  = sprintf("Created by github.com/UofUEpi.\nData retrieved from github.com/globaldothealth/monkeypox."),
+    x        = "Date"
+    )
+```
+
+```{r newcases-per-country-smoothed, message=FALSE, fig.height=7, fig.width=7}
+dat_per_country_avg <- dat[Status == "confirmed", .(Country, Date_entry)]
+dat_per_country_avg <- dat[, .(n = .N), by = .(Country, Date_entry)]
+
+drange <- dat_per_date[, range(Date_entry, na.rm = TRUE)]
+merger <- data.table(Date_entry = seq(drange[1], drange[2], by = 1))
+
+dat_per_country_avg <- merge(
+  dat_per_country_avg, 
+  merger, all = TRUE
+)[, n := fcoalesce(n, 0L)]
+
+# Top 10 countries
+top10 <- setorder(dat_per_country, -n) |> head(10)
+top10 <- top10$Country
+dat_per_country_avg[, Country := fifelse(Country %in% top10, Country, "* Rest of the world")]
+
+setorder(dat_per_country_avg, Country, Date_entry)
+dat_per_country_avg[, Cumulative := cumsum(n), by = .(Country)]
+
+# Fancy labels and order
+fancy_labels <- rbind(
+  dat_per_country[1:10, .(Country, Total = n)],
+  dat_per_country[-c(1:10), .(Country = "* Rest of the world", Total = sum(n))]
+)
+
+fancy_labels[, lab := sprintf("%s (%i)", Country, Total)]
+fancy_labels[, lab := factor(lab, levels = lab, ordered = TRUE)]
+dat_per_country_avg <- merge(dat_per_country_avg, fancy_labels)
+
+dat_per_country_avg[, alevel := Total/diff(range(Total))]
+
+dat_per_country_avg |>
+  ggplot(aes(x = Date_entry, y = fcoalesce(n, 0L))) +
+  geom_jitter(aes(colour = lab, size = Cumulative, alpha = Total)) + 
+  geom_smooth(colour = "black", alpha = .5, lty = 2) +
+  scale_color_discrete()+
+  labs(
+    y        = "Daily cases",
+    title    = "Daily confirmed cases per country",
+    subtitle = paste0("Last update ", max(dat$Date_last_modified, na.rm = TRUE)),
+    caption  = sprintf("Created by github.com/UofUEpi.\nData retrieved from github.com/globaldothealth/monkeypox."),
+    x        = "Date",
+    colour   = "Country (total cases)",
+    size     = "Cumulative\nper country"
+    ) +
+  guides(alpha = "none")
+```
+
