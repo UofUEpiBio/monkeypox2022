@@ -116,7 +116,7 @@ ggplot(dat_per_date[Status == "confirmed"], aes(x = Date_entry, y = fcoalesce(n,
     )
 ```
 
-```{r newcases-per-country-smoothed, message=FALSE, fig.height=7, fig.width=7}
+```{r newcases-per-country-smoothed, message=FALSE, fig.height=7, fig.width=10}
 dat_per_country_avg <- dat[Status == "confirmed", .(Country, Date_entry)]
 dat_per_country_avg <- dat[, .(n = .N), by = .(Country, Date_entry)]
 
